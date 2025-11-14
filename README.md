@@ -105,7 +105,7 @@ for (let i = 0; i < iterations; i++) {
 const jsTime = performance.now() - jsStart;
 ```
 
-**Results**: JavaScript was faster due to array marshalling overhead and lack of SIMD optimization.
+**Results**: JavaScript was faster due to array marshalling overhead and lack of SIMD optimization(according to Claude).
 
 ### 2. Accelerate Framework with Arrays (vDSP)
 
@@ -153,7 +153,7 @@ class HybridCosineSimilarity: HybridCosineSimilaritySpec {
 
 **Benchmark Code:** (same as above)
 
-**Results**: Native with vDSP was slower than the scalar implementation.
+**Results**: Native with vDSP was slower than the pure Javascript implementation in the AI SDK.
 
 ### 3. Accelerate Framework with ArrayBuffer (Zero-Copy)
 
@@ -259,7 +259,7 @@ for (let i = 0; i < iterations; i++) {
 const nativeTime = performance.now() - nativeStart;
 ```
 
-**Results**: Native with ArrayBuffer significantly outperforms JavaScript by eliminating memory copying overhead and utilizing hardware-accelerated SIMD operations.
+**Results**: Native with ArrayBuffer significantly outperforms JavaScript.
 
 ## Complete Benchmark Example
 
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
 
 1. **Array Marshalling Overhead**: Passing regular arrays from JavaScript to native incurs significant copying costs, especially for large vectors.
 
-2. **SIMD Acceleration**: Apple's Accelerate framework with vDSP provides hand-optimized SIMD operations that process 4-8 elements simultaneously.
+2. **SIMD Acceleration**: Apple's Accelerate framework with vDSP provides hand-optimized SIMD operations.
 
 3. **Zero-Copy with ArrayBuffer**: Using ArrayBuffer eliminates memory copying, allowing native code to directly access JavaScript's typed array memory.
 
@@ -439,7 +439,7 @@ const similarity = NitroCosSim.cosineSimilarity(vec1.buffer, vec2.buffer);
 const similarity2 = NitroCosSim.cosineSimilarity([1, 2, 3, 4], [5, 6, 7, 8]);
 ```
 
-## iMPORTANT NOTES
+## IMPORTANT NOTES
 
 1. The benchmarks were desinged by Claude, because I didn't know how to design a proper test for something like this.
 2. I got help from Claude when I implemented the vDSP example as I did not have previous experience with it.
