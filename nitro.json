@@ -1,0 +1,23 @@
+{
+  "$schema": "https://nitro.margelo.com/nitro.schema.json",
+  "cxxNamespace": [
+    "nitrocossim"
+  ],
+  "ios": {
+    "iosModuleName": "NitroCosSim"
+  },
+  "android": {
+    "androidNamespace": [
+      "nitrocossim"
+    ],
+    "androidCxxLibName": "NitroCosSim"
+  },
+  "autolinking": {
+    "CosineSimilarity": {
+      "swift": "HybridCosineSimilarity"
+    }
+  },
+  "ignorePaths": [
+    "**/node_modules"
+  ]
+}
