@@ -443,7 +443,8 @@ const similarity2 = NitroCosSim.cosineSimilarity([1, 2, 3, 4], [5, 6, 7, 8]);
 
 1. The benchmarks were desinged by Claude, because I didn't know how to design a proper test for something like this.
 2. I got help from Claude when I implemented the vDSP example as I did not have previous experience with it.
-3. All in all, I made sure not to vibe code but to do my best to understand. 
+3. All in all, I made sure not to vibe code but to do my best to understand.
+4. If you notice any mistake or if anything seems absurd, sorry about that, my head hurts at the moment. 
 
 ## Credits
 
