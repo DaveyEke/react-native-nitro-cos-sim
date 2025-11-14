@@ -15,6 +15,13 @@ This project explores different approaches to implementing cosine similarity in 
 ![Array Demo](docs/images/ArrayDemo.png)
 *Native implementation with regular arrays - Shows marshalling overhead*
 
+
+### NOTE
+
+The test was done with a base iPhone 12 running iOS 26.1
+
+Link to Vercel AI SDK [cosineSimilarity package](tab:https://github.com/vercel/ai/blob/main/packages/ai/src/util/cosine-similarity.ts)
+
 ## Implementation Journey
 
 ### 1. Initial Scalar Implementation (Array with Double)
@@ -146,7 +153,7 @@ class HybridCosineSimilarity: HybridCosineSimilaritySpec {
 
 **Benchmark Code:** (same as above)
 
-**Results**: Native with vDSP was faster than the scalar implementation but still had array marshalling overhead. Performance gain varied depending on array copying costs.
+**Results**: Native with vDSP was slower than the scalar implementation.
 
 ### 3. Accelerate Framework with ArrayBuffer (Zero-Copy)
 
@@ -396,7 +403,26 @@ const styles = StyleSheet.create({
 ## Installation
 
 ```bash
-npm install react-native-nitro-cos-sim
+## Installation
+
+For local development:
+
+```bash
+# Clone the repository
+git clone https://github.com/DaveyEke/react-native-nitro-cos-sim.git
+cd react-native-nitro-cos-sim
+
+# Install dependencies
+npm install
+
+# Generate Nitro bindings
+npx nitrogen
+
+# Run the example app
+cd example
+npm install
+npx expo prebuild --clean
+npx expo run:ios --configuration Release
 ```
 
 ## Usage
@@ -413,17 +439,11 @@ const similarity = NitroCosSim.cosineSimilarity(vec1.buffer, vec2.buffer);
 const similarity2 = NitroCosSim.cosineSimilarity([1, 2, 3, 4], [5, 6, 7, 8]);
 ```
 
-## Building
+## iMPORTANT NOTES
 
-```bash
-# Generate Nitro bindings using nitrogen (Nitro codegen)
-npx nitrogen 
-
-# Build and run
-cd example
-npx expo prebuild --clean
-npx expo run:ios --configuration Release
-```
+1. The benchmarks were desinged by Claude, because I didn't know how to design a proper test for something like this.
+2. I got help from Claude when I implemented the vDSP example as I did not have previous experience with it.
+3. All in all, I made sure not to vibe code but to do my best to understand. 
 
 ## Credits
 
