@@ -27,7 +27,7 @@ Latest scalar ArrayBuffer + Release benchmark:
 
 ### NOTE
 
-The tests were run on a base iPhone 12 running iOS 16.1.  
+The tests were run on a base iPhone 12 running iOS 26.1.  (stable version)
 JS baseline uses the Vercel AI SDK [`cosineSimilarity`](https://github.com/vercel/ai/blob/main/packages/ai/src/util/cosine-similarity.ts).
 
 ---
