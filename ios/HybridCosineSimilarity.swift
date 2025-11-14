@@ -1,5 +1,4 @@
 import Foundation
-import Accelerate
 import NitroModules
 
 enum CosineSimilarityError: Error {
@@ -21,13 +20,11 @@ class HybridCosineSimilarity: HybridCosineSimilaritySpec {
             throw CosineSimilarityError.vectorLengthMismatch
         }
         
-        let n = vDSP_Length(countA)
-        
+        let n = countA
         guard n > 0 else {
             return 0.0
         }
         
-        // Cast to Double pointers (zero-copy!)
         let ptrA = UnsafeRawPointer(dataA).assumingMemoryBound(to: Double.self)
         let ptrB = UnsafeRawPointer(dataB).assumingMemoryBound(to: Double.self)
         
@@ -35,13 +32,15 @@ class HybridCosineSimilarity: HybridCosineSimilaritySpec {
         var magA: Double = 0
         var magB: Double = 0
         
-        // vDSP SIMD operations with direct pointer access
-        vDSP_dotprD(ptrA, 1, ptrB, 1, &dotProduct, n)
-        vDSP_svesqD(ptrA, 1, &magA, n)
-        vDSP_svesqD(ptrB, 1, &magB, n)
+        for i in 0..<n {
+            let a = ptrA[i]
+            let b = ptrB[i]
+            dotProduct += a * b
+            magA += a * a
+            magB += b * b
+        }
         
         let denom = sqrt(magA) * sqrt(magB)
-        
         return denom == 0 ? 0 : dotProduct / denom
     }
 }

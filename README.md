@@ -1,411 +1,38 @@
 # React Native Nitro Cosine Similarity
 
-A performance comparison of cosine similarity implementations in React Native, comparing pure JavaScript (Vercel AI SDK) against native Swift implementations using Nitro Modules.
+Fast cosine similarity for React Native, implemented in Swift using [Nitro Modules](https://github.com/mrousavy/nitro).
 
-**Author**: [@DaveyEke](https://twitter.com/1804davey)  
-**Built with**: [Nitro Modules](https://github.com/mrousavy/nitro) by [@mrousavy](https://twitter.com/mrousavy)
+- **Supports**: JS arrays and `ArrayBuffer` / typed arrays  
+- **Optimized for**: OpenAI‑style embedding vectors (e.g. length 1536)  
+- **Bridge**: Nitro Modules (zero‑copy for `ArrayBuffer`)
 
-## Overview
+| Implementation                            | Notes                                              |
+| ----------------------------------------- | -------------------------------------------------- |
+| Swift (ArrayBuffer, scalar, no vDSP)      | Zero‑copy, pointer‑based, Release build optimized |
+| JavaScript (Vercel AI `cosineSimilarity`) | Baseline, JIT‑optimized JS                         |
 
-This project explores different approaches to implementing cosine similarity in React Native, with a focus on performance optimization through native code and zero-copy memory access.
+This project explores different approaches to implementing cosine similarity in React Native, with a focus on performance through native code and zero‑copy memory access.
 
-![ArrayBuffer Demo](docs/images/ArrayBufferDemo.png)
-*Native implementation with ArrayBuffer (zero-copy) - Fastest performance*
+![ArrayBuffer Demo](docs/images/ArrayBufferDemo.png)  
+*Native implementation with ArrayBuffer (zero‑copy) – older benchmark*
 
-![Array Demo](docs/images/ArrayDemo.png)
-*Native implementation with regular arrays - Shows marshalling overhead*
+![Array Demo](docs/images/ArrayDemo.png)  
+*Native implementation with regular arrays – shows marshalling overhead*
 
+Latest scalar ArrayBuffer + Release benchmark:
+
+![Scalar Swift with ArrayBuffer, no Accelerate](docs/ArrayBufferW/OFramework.png)
+
+*Scalar Swift, ArrayBuffer, no Apple Accelerate – ~11.16× faster than JS in my test*
 
 ### NOTE
 
-The test was done with a base iPhone 12 running iOS 26.1
+The tests were run on a base iPhone 12 running iOS 16.1.  
+JS baseline uses the Vercel AI SDK [`cosineSimilarity`](https://github.com/vercel/ai/blob/main/packages/ai/src/util/cosine-similarity.ts).
 
-Link to Vercel AI SDK [cosineSimilarity package](https://github.com/vercel/ai/blob/main/packages/ai/src/util/cosine-similarity.ts)
-
-## Implementation Journey
-
-### 1. Initial Scalar Implementation (Array with Double)
-
-The first implementation used a simple scalar loop in Swift, accepting regular arrays:
-
-**Swift Implementation:**
-```swift
-import Foundation
-import NitroModules
-
-enum CosineSimilarityError: Error {
-    case vectorLengthMismatch
-}
-
-class HybridCosineSimilarity: HybridCosineSimilaritySpec {
-    func cosineSimilarity(vectorA: [Double], vectorB: [Double]) throws -> Double {
-        guard vectorA.count == vectorB.count else {
-            throw CosineSimilarityError.vectorLengthMismatch
-        }
-        
-        let n = vectorA.count
-        
-        if n == 0 {
-            return 0.0
-        }
-        
-        var magnitudeSquared1: Double = 0.0
-        var magnitudeSquared2: Double = 0.0
-        var dotProduct: Double = 0.0
-        
-        for i in 0..<n {
-            let value1 = vectorA[i]
-            let value2 = vectorB[i]
-            
-            magnitudeSquared1 += value1 * value1
-            magnitudeSquared2 += value2 * value2
-            dotProduct += value1 * value2
-        }
-        
-        guard magnitudeSquared1 != 0 && magnitudeSquared2 != 0 else {
-            return 0.0
-        }
-        
-        return dotProduct / (sqrt(magnitudeSquared1) * sqrt(magnitudeSquared2))
-    }
-}
-```
-
-**TypeScript Spec:**
-```typescript
-import type { HybridObject } from 'react-native-nitro-modules'
-
-export interface CosineSimilarity extends HybridObject<{ ios: 'swift', android: 'kotlin' }> {
-  cosineSimilarity(vectorA: number[], vectorB: number[]): number
-}
-```
-
-**Benchmark Code:**
-```typescript
-const vectorSize = 1536;
-const iterations = 1000;
-
-const vectorPairs = Array.from({ length: iterations }, () => ({
-  v1: Array.from({ length: vectorSize }, () => Math.random()),
-  v2: Array.from({ length: vectorSize }, () => Math.random())
-}));
-
-// Test Native
-const nativeStart = performance.now();
-for (let i = 0; i < iterations; i++) {
-  NitroCosSim.cosineSimilarity(vectorPairs[i].v1, vectorPairs[i].v2);
-}
-const nativeTime = performance.now() - nativeStart;
-
-// Test JS
-const jsStart = performance.now();
-for (let i = 0; i < iterations; i++) {
-  cosineSimilarity(vectorPairs[i].v1, vectorPairs[i].v2);
-}
-const jsTime = performance.now() - jsStart;
-```
-
-**Results**: JavaScript was faster due to array marshalling overhead and lack of SIMD optimization(according to Claude).
-
-### 2. Accelerate Framework with Arrays (vDSP)
-
-The second implementation leveraged Apple's Accelerate framework with vDSP (Vector DSP) operations:
-
-**Swift Implementation:**
-```swift
-import Foundation
-import Accelerate
-import NitroModules
-
-enum CosineSimilarityError: Error {
-    case vectorLengthMismatch
-}
-
-class HybridCosineSimilarity: HybridCosineSimilaritySpec {
-    func cosineSimilarity(vectorA: [Double], vectorB: [Double]) throws -> Double {
-        guard vectorA.count == vectorB.count else {
-            throw CosineSimilarityError.vectorLengthMismatch
-        }
-        
-        let n = vDSP_Length(vectorA.count)
-        
-        guard n > 0 else {
-            return 0.0
-        }
-        
-        var dotProduct: Double = 0
-        var magA: Double = 0
-        var magB: Double = 0
-        
-        // vDSP SIMD operations
-        vDSP_dotprD(vectorA, 1, vectorB, 1, &dotProduct, n)
-        vDSP_svesqD(vectorA, 1, &magA, n)
-        vDSP_svesqD(vectorB, 1, &magB, n)
-        
-        let denom = sqrt(magA) * sqrt(magB)
-        
-        return denom == 0 ? 0 : dotProduct / denom
-    }
-}
-```
-
-**TypeScript Spec:** (same as above)
-
-**Benchmark Code:** (same as above)
-
-**Results**: Native with vDSP was slower than the pure Javascript implementation in the AI SDK.
-
-### 3. Accelerate Framework with ArrayBuffer (Zero-Copy)
-
-The final implementation uses ArrayBuffer for zero-copy memory access:
-
-**Swift Implementation:**
-```swift
-import Foundation
-import Accelerate
-import NitroModules
-
-enum CosineSimilarityError: Error {
-    case vectorLengthMismatch
-}
-
-class HybridCosineSimilarity: HybridCosineSimilaritySpec {
-    func cosineSimilarity(vectorA: NitroModules.ArrayBuffer, vectorB: NitroModules.ArrayBuffer) throws -> Double {
-        let dataA = vectorA.data
-        let dataB = vectorB.data
-        
-        let sizeA = vectorA.size
-        let sizeB = vectorB.size
-        
-        let countA = sizeA / MemoryLayout<Double>.stride
-        let countB = sizeB / MemoryLayout<Double>.stride
-        
-        guard countA == countB else {
-            throw CosineSimilarityError.vectorLengthMismatch
-        }
-        
-        let n = vDSP_Length(countA)
-        
-        guard n > 0 else {
-            return 0.0
-        }
-        
-        // Cast to Double pointers (zero-copy!)
-        let ptrA = UnsafeRawPointer(dataA).assumingMemoryBound(to: Double.self)
-        let ptrB = UnsafeRawPointer(dataB).assumingMemoryBound(to: Double.self)
-        
-        var dotProduct: Double = 0
-        var magA: Double = 0
-        var magB: Double = 0
-        
-        // vDSP SIMD operations with direct pointer access
-        vDSP_dotprD(ptrA, 1, ptrB, 1, &dotProduct, n)
-        vDSP_svesqD(ptrA, 1, &magA, n)
-        vDSP_svesqD(ptrB, 1, &magB, n)
-        
-        let denom = sqrt(magA) * sqrt(magB)
-        
-        return denom == 0 ? 0 : dotProduct / denom
-    }
-}
-```
-
-**TypeScript Spec:**
-```typescript
-import type { HybridObject } from 'react-native-nitro-modules'
-
-export interface CosineSimilarity extends HybridObject<{ ios: 'swift', android: 'kotlin' }> {
-  cosineSimilarity(vectorA: ArrayBuffer, vectorB: ArrayBuffer): number
-}
-```
-
-**Benchmark Code:**
-```typescript
-const vectorSize = 1536;
-const iterations = 1000;
-
-// Generate regular arrays for JS
-const jsVectorPairs = Array.from({ length: iterations }, () => ({
-  a: Array.from({ length: vectorSize }, () => Math.random()),
-  b: Array.from({ length: vectorSize }, () => Math.random())
-}));
-
-// Generate TypedArrays for Native
-const nativeVectorPairs = Array.from({ length: iterations }, () => {
-  const a = new Float64Array(vectorSize);
-  const b = new Float64Array(vectorSize);
-  for (let i = 0; i < vectorSize; i++) {
-    a[i] = Math.random();
-    b[i] = Math.random();
-  }
-  return { a, b };
-});
-
-// Test JS
-const jsStart = performance.now();
-for (let i = 0; i < iterations; i++) {
-  cosineSimilarity(jsVectorPairs[i].a, jsVectorPairs[i].b);
-}
-const jsTime = performance.now() - jsStart;
-
-// Test Native with ArrayBuffer
-const nativeStart = performance.now();
-for (let i = 0; i < iterations; i++) {
-  NitroCosSim.cosineSimilarity(
-    nativeVectorPairs[i].a.buffer,
-    nativeVectorPairs[i].b.buffer
-  );
-}
-const nativeTime = performance.now() - nativeStart;
-```
-
-**Results**: Native with ArrayBuffer significantly outperforms JavaScript.
-
-## Complete Benchmark Example
-
-```typescript
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, Button, ScrollView } from 'react-native';
-import { NitroCosSim } from 'react-native-nitro-cos-sim';
-import { cosineSimilarity } from 'ai';
-import { useState } from 'react';
-
-export default function App() {
-  const [results, setResults] = useState<string>('');
-  const [isRunning, setIsRunning] = useState(false);
-
-  const randVector = (size: number): number[] =>
-    Array.from({ length: size }, () => Math.random());
-
-  const randTypedVector = (size: number): Float64Array => {
-    const arr = new Float64Array(size);
-    for (let i = 0; i < size; i++) {
-      arr[i] = Math.random();
-    }
-    return arr;
-  };
-
-  const runBenchmark = async () => {
-    setIsRunning(true);
-    setResults('Running benchmark...');
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    const vectorSize = 1536;
-    const iterations = 1000;
-
-    const jsVectorPairs = Array.from({ length: iterations }, () => ({
-      a: randVector(vectorSize),
-      b: randVector(vectorSize)
-    }));
-
-    const nativeVectorPairs = Array.from({ length: iterations }, () => ({
-      a: randTypedVector(vectorSize),
-      b: randTypedVector(vectorSize)
-    }));
-
-    cosineSimilarity(jsVectorPairs[0].a, jsVectorPairs[0].b);
-    NitroCosSim.cosineSimilarity(nativeVectorPairs[0].a.buffer, nativeVectorPairs[0].b.buffer);
-
-    const jsStart = performance.now();
-    for (let i = 0; i < iterations; i++) {
-      cosineSimilarity(jsVectorPairs[i].a, jsVectorPairs[i].b);
-    }
-    const jsTime = performance.now() - jsStart;
-
-    const nativeStart = performance.now();
-    for (let i = 0; i < iterations; i++) {
-      NitroCosSim.cosineSimilarity(nativeVectorPairs[i].a.buffer, nativeVectorPairs[i].b.buffer);
-    }
-    const nativeTime = performance.now() - nativeStart;
-
-    const speedup = jsTime / nativeTime;
-
-    const output = `
-Results:
---------
-JS (Vercel AI SDK):     ${jsTime.toFixed(2)}ms
-Native (ArrayBuffer):   ${nativeTime.toFixed(2)}ms
-
-Per operation:
-  JS:     ${(jsTime / iterations).toFixed(4)}ms
-  Native: ${(nativeTime / iterations).toFixed(4)}ms
-
-Speedup: ${speedup.toFixed(2)}x
-    `.trim();
-
-    setResults(output);
-    setIsRunning(false);
-  };
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Nitro Cosine Similarity</Text>
-      <Button 
-        title={isRunning ? "Running..." : "Run Benchmark"} 
-        onPress={runBenchmark}
-        disabled={isRunning}
-      />
-      <ScrollView style={styles.scrollView}>
-        {results ? <Text style={styles.results}>{results}</Text> : null}
-      </ScrollView>
-      <StatusBar style="auto" />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  scrollView: {
-    flex: 1,
-    width: '100%',
-    marginTop: 20,
-  },
-  results: {
-    fontFamily: 'monospace',
-    fontSize: 12,
-  },
-});
-```
-
-## Performance Summary
-
-| Implementation | Relative Performance | Notes |
-|---------------|---------------------|-------|
-| Scalar Swift (Array) | Baseline | Simple loop, array marshalling overhead |
-| vDSP Swift (Array) | 2-4x faster | SIMD operations, still has marshalling |
-| vDSP Swift (ArrayBuffer) | 7-15x faster | Zero-copy + SIMD, optimal performance |
-| JavaScript (Vercel AI) | Comparison baseline | JIT-optimized, auto-vectorization |
-
-## Key Learnings
-
-1. **Array Marshalling Overhead**: Passing regular arrays from JavaScript to native incurs significant copying costs, especially for large vectors.
-
-2. **SIMD Acceleration**: Apple's Accelerate framework with vDSP provides hand-optimized SIMD operations.
-
-3. **Zero-Copy with ArrayBuffer**: Using ArrayBuffer eliminates memory copying, allowing native code to directly access JavaScript's typed array memory.
-
-4. **When Native Wins**: Native implementations excel when:
-   - Using hardware-accelerated operations (vDSP, SIMD)
-   - Eliminating memory copying (ArrayBuffer)
-   - Processing large datasets where setup costs are amortized
+---
 
 ## Installation
-
-```bash
-## Installation
-
-For local development:
 
 ```bash
 # Clone the repository
@@ -418,37 +45,200 @@ npm install
 # Generate Nitro bindings
 npx nitrogen
 
-# Run the example app
+# Run the example app (iOS Release)
 cd example
 npm install
 npx expo prebuild --clean
 npx expo run:ios --configuration Release
 ```
 
+If you haven’t set up Nitro in your project yet, follow the Nitro Modules docs first:  
+https://github.com/mrousavy/nitro
+
+---
+
 ## Usage
 
-```typescript
+### 1. Fastest path: `Float64Array` + `ArrayBuffer`
+
+```ts
 import { NitroCosSim } from 'react-native-nitro-cos-sim';
 
-// With ArrayBuffer (fastest)
+// Using typed arrays + ArrayBuffer (zero-copy into Swift)
 const vec1 = new Float64Array([1, 2, 3, 4]);
 const vec2 = new Float64Array([5, 6, 7, 8]);
-const similarity = NitroCosSim.cosineSimilarity(vec1.buffer, vec2.buffer);
 
-// With regular arrays (slower due to marshalling)
-const similarity2 = NitroCosSim.cosineSimilarity([1, 2, 3, 4], [5, 6, 7, 8]);
+const similarity = await NitroCosSim.cosineSimilarity(
+  vec1.buffer,
+  vec2.buffer
+);
+
+console.log('cosine similarity (ArrayBuffer):', similarity);
 ```
 
-## IMPORTANT NOTES
+### 2. Convenience: regular JS arrays (slower, due to marshalling)
 
-1. The benchmarks were desinged by Claude, because I didn't know how to design a proper test for something like this.
-2. I got help from Claude when I implemented the vDSP example as I did not have previous experience with it.
-3. All in all, I made sure not to vibe code but to do my best to understand.
-4. If you notice any mistake or if anything seems absurd, sorry about that, my head hurts at the moment. 
+```ts
+import { NitroCosSim } from 'react-native-nitro-cos-sim';
+
+const similarity2 = await NitroCosSim.cosineSimilarity(
+  [1, 2, 3, 4],
+  [5, 6, 7, 8]
+);
+
+console.log('cosine similarity (arrays):', similarity2);
+```
+
+> For small vectors or one‑off calls, JS arrays are fine.  
+> For larger vectors / many calls (e.g. embeddings), prefer `Float64Array` + `.buffer`.
+
+---
+
+## Example App / Benchmark
+
+The example app compares:
+
+- **JS**: `cosineSimilarity` from the Vercel AI SDK on plain JS arrays
+- **Native**: Swift scalar implementation, using Nitro `ArrayBuffer` + pointers  
+  (no Apple Accelerate / vDSP)
+
+```tsx
+// example/App.tsx (excerpt)
+const vectorSize = 1536;
+const iterations = 1000;
+
+// JS uses regular arrays (Vercel AI cosineSimilarity baseline)
+const jsVectorPairs = Array.from({ length: iterations }, () => ({
+  a: randVector(vectorSize),
+  b: randVector(vectorSize),
+}));
+
+// Native uses Float64Array + ArrayBuffer,
+// Swift side is a plain scalar loop (NO Apple Accelerate framework).
+const nativeVectorPairs = Array.from({ length: iterations }, () => ({
+  a: randTypedVector(vectorSize),
+  b: randTypedVector(vectorSize),
+}));
+```
+
+The UI prints something like:
+
+```text
+Results (NO Accelerate):
+------------------------
+JS (Vercel AI SDK):          XXX.XXms
+Native (scalar, ArrayBuffer): YYY.YYms
+
+Per operation:
+  JS:     0.XXXXms
+  Native: 0.YYYYms
+
+Speedup (JS / Native): 11.16x
+```
+
+---
+
+## What I actually learned doing this
+
+I started with the classic “native should be faster than JS” intuition, but a few details made a huge difference.
+
+### 1. Don’t fight Nitro’s rules for large data
+
+At first I was pushing big **standard JS arrays** through the bridge and wondering why it felt slow. Nitro’s performance docs are very clear:
+
+> For large numeric data, **never** use normal JS arrays – use `ArrayBuffer` / typed arrays so native can work on the raw memory.
+
+I was going against Nitro’s rule and paying for heavy array marshalling.
+
+### 2. ArrayBuffer + pointers is enough – even without Apple’s Accelerate
+
+Once I calmed down and actually read the Nitro docs:
+
+1. I swapped the JS arrays for `Float64Array` and passed `.buffer` into Nitro.
+2. On the Swift side, I **removed** Apple’s Accelerate / vDSP and went back to a simple scalar implementation, but this time with `ArrayBuffer` and pointers.
+
+Key bits on the Swift side:
+
+- `MemoryLayout<Double>.stride` is used to figure out how many bytes a single `Double` takes:
+
+  ```swift
+  let countA = sizeA / MemoryLayout<Double>.stride
+  ```
+
+- `UnsafeRawPointer(dataA).assumingMemoryBound(to: Double.self)` tells Swift:
+
+  > “Treat this raw buffer as if it’s an array of `Double`s.”
+
+  That gives me a `UnsafePointer<Double>` so I can just read `ptrA[i]` as a `Double`:
+
+  ```swift
+  let ptrA = UnsafeRawPointer(dataA).assumingMemoryBound(to: Double.self)
+  let ptrB = UnsafeRawPointer(dataB).assumingMemoryBound(to: Double.self)
+
+  for i in 0..<n {
+    let a = ptrA[i]
+    let b = ptrB[i]
+    dotProduct += a * b
+    magA += a * a
+    magB += b * b
+  }
+  ```
+
+No vDSP, no special Apple framework — just raw pointers, a scalar loop, and **ArrayBuffer** so there’s **zero copying** between JS and Swift.
+
+### 3. Release mode is non‑negotiable for performance
+
+In **Debug**, Swift keeps a lot of checks and turns off many optimizations, so tight numeric loops look much slower than they really are.
+
+As soon as I ran the same benchmark in **Release**:
+
+```bash
+cd example
+npx expo prebuild --clean
+npx expo run:ios --configuration Release
+```
+
+the scalar Swift + `ArrayBuffer` version became **insanely** fast and ended up around **11.16× faster** than the JS cosine similarity implementation from Vercel AI in my test.
+
+So this is basically a re‑implementation of the JS cosine similarity in Swift, using Nitro Modules, `ArrayBuffer`, and plain pointers — and it’s ~11.16× faster, boosted by Nitro Modules 🔥
+
+---
+
+## Building the example
+
+To run the example benchmark:
+
+```bash
+# Generate Nitro bindings using nitrogen (Nitro codegen)
+npx nitrogen
+
+# Build and run the Expo example (iOS Release)
+cd example
+npx expo prebuild --clean
+npx expo run:ios --configuration Release
+```
+
+Run on a real device for realistic performance.
+
+---
+
+## API
+
+### `NitroCosSim.cosineSimilarity(a, b)`
+
+- **Parameters**
+  - `a`: `number[]` or `ArrayBuffer` (prefer `Float64Array.buffer`)
+  - `b`: `number[]` or `ArrayBuffer`
+- **Returns**: `Promise<number>` – cosine similarity in `[-1, 1]`
+- **Throws** (native side): vector length mismatch if `a` and `b` are not the same length.
+
+---
 
 ## Credits
 
-Built with [Nitro Modules](https://github.com/mrousavy/nitro) by [@mrousavy](https://twitter.com/mrousavy)
+Built with [Nitro Modules](https://github.com/mrousavy/nitro) by [@mrousavy](https://twitter.com/mrousavy).
+
+---
 
 ## License
 
