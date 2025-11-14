@@ -21,7 +21,7 @@ This project explores different approaches to implementing cosine similarity in 
 
 Latest scalar ArrayBuffer + Release benchmark:
 
-![Scalar Swift with ArrayBuffer, no Accelerate](docs/ArrayBufferW:OFramework.heic)
+![Scalar Swift with ArrayBuffer, no Accelerate](docs/images/ArrayBufferW:OFramework.heic)
 
 *Scalar Swift, ArrayBuffer, no Apple Accelerate – ~11.16× faster than JS in my test*
 
