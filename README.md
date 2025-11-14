@@ -20,7 +20,7 @@ This project explores different approaches to implementing cosine similarity in 
 
 The test was done with a base iPhone 12 running iOS 26.1
 
-Link to Vercel AI SDK [cosineSimilarity package](tab:https://github.com/vercel/ai/blob/main/packages/ai/src/util/cosine-similarity.ts)
+Link to Vercel AI SDK [cosineSimilarity package](https://github.com/vercel/ai/blob/main/packages/ai/src/util/cosine-similarity.ts)
 
 ## Implementation Journey
 
