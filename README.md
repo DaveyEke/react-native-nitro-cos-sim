@@ -2,7 +2,7 @@
 
 Fast cosine similarity for React Native, implemented in Swift using [Nitro Modules](https://github.com/mrousavy/nitro).
 
-- **Supports**: JS arrays and `ArrayBuffer` / typed arrays  
+- **Supports**:  `ArrayBuffer`  
 - **Optimized for**: OpenAI‑style embedding vectors (e.g. length 1536)  
 - **Bridge**: Nitro Modules (zero‑copy for `ArrayBuffer`)
 
