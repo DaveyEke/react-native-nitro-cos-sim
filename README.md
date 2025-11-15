@@ -81,6 +81,7 @@ console.log('cosine similarity (ArrayBuffer):', similarity);
 ```ts
 import { NitroCosSim } from 'react-native-nitro-cos-sim';
 
+// Old implementation no longer supported 
 const similarity2 = await NitroCosSim.cosineSimilarity(
   [1, 2, 3, 4],
   [5, 6, 7, 8]
@@ -227,9 +228,9 @@ Run on a real device for realistic performance.
 ### `NitroCosSim.cosineSimilarity(a, b)`
 
 - **Parameters**
-  - `a`: `number[]` or `ArrayBuffer` (prefer `Float64Array.buffer`)
-  - `b`: `number[]` or `ArrayBuffer`
-- **Returns**: `Promise<number>` – cosine similarity in `[-1, 1]`
+  - `a`:  `ArrayBuffer` 
+  - `b`:  `ArrayBuffer`
+- **Returns**: `number` – cosine similarity in `[-1, 1]`
 - **Throws** (native side): vector length mismatch if `a` and `b` are not the same length.
 
 ---
