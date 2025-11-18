@@ -23,7 +23,7 @@ Latest scalar ArrayBuffer + Release benchmark:
 
 ![Scalar Swift with ArrayBuffer, no Accelerate](docs/images/ArrayBufferWOAccelerate.png)
 
-*Scalar Swift, ArrayBuffer, no Apple Accelerate – ~11.16× faster than JS in my test*
+*Scalar Swift, ArrayBuffer, no Apple Accelerate – ~11.60× faster than JS in my test*
 
 ### NOTE
 
@@ -134,7 +134,7 @@ Per operation:
   JS:     0.XXXXms
   Native: 0.YYYYms
 
-Speedup (JS / Native): 11.16x
+Speedup (JS / Native): 11.60x
 ```
 
 ---
@@ -199,9 +199,9 @@ npx expo prebuild --clean
 npx expo run:ios --configuration Release
 ```
 
-the scalar Swift + `ArrayBuffer` version became **insanely** fast and ended up around **11.16× faster** than the JS cosine similarity implementation from Vercel AI in my test.
+the scalar Swift + `ArrayBuffer` version became **insanely** fast and ended up around **11.60× faster** than the JS cosine similarity implementation from Vercel AI in my test.
 
-So this is basically a re‑implementation of the JS cosine similarity in Swift, using Nitro Modules, `ArrayBuffer`, and plain pointers — and it’s ~11.16× faster, boosted by Nitro Modules 🔥
+So this is basically a re‑implementation of the JS cosine similarity in Swift, using Nitro Modules, `ArrayBuffer`, and plain pointers — and it’s ~11.60× faster, boosted by Nitro Modules 🔥
 
 ---
 
